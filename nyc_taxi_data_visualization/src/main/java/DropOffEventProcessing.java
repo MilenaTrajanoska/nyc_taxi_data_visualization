@@ -23,24 +23,24 @@ public class DropOffEventProcessing {
 
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.getCheckpointConfig().setCheckpointStorage("file:///src/main/resources/checkpoint");
-        env.enableCheckpointing(1000);
+        env.enableCheckpointing(180000);
 
         DataStreamSource<TaxiRide> rides = env
                 .addSource(new TaxiRideEventSource("src/main/resources/data/full_data.csv", 200))
                 .setParallelism(1);
 
         WatermarkStrategy<TaxiRide> watermarkStrategy =
-                WatermarkStrategy.<TaxiRide>forBoundedOutOfOrderness(Duration.ofSeconds(3))
+                WatermarkStrategy.<TaxiRide>forBoundedOutOfOrderness(Duration.ofMinutes(5))
                         .withTimestampAssigner(
                                 (ride, streamRecordTimestamp) -> ride.getEventTimeMillis());
 
         rides.filter(Objects::nonNull)
                 .assignTimestampsAndWatermarks(watermarkStrategy)
                 .keyBy(tr -> getGridCellCenterPoint(tr.getDropOffLong(), tr.getDropOffLat()))
-                .window(TumblingEventTimeWindows.of(Time.seconds(10)))
+                .window(TumblingEventTimeWindows.of(Time.minutes(10)))
                 .process(new AddPassengers())
-                .map(PopularDestination::toString)
-                .sinkTo(SinkFactory.getFlinkKafkaStringSink());
+                .sinkTo(SinkFactory.getFlinkKafkaPopularDestinationsSink())
+                .setParallelism(5);
 
         env.execute("Popular destinations");
 

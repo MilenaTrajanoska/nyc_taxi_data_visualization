@@ -5,6 +5,7 @@ import org.apache.flink.streaming.api.functions.source.SourceFunction;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.PriorityQueue;
@@ -46,9 +47,7 @@ public class TaxiRideEventSource implements SourceFunction<TaxiRide> {
 
                 }
 
-                long randDelay = randomDelay.nextInt((int) maxDelayMillis);
-                randDelay = Math.min(randDelay, maxDelayMillis) + 100;
-                long delayedEventTime = curNextDelayedEventTime + randDelay;
+                long delayedEventTime = getDelayedEventTime(curNextDelayedEventTime);
                 ride.setEventTimeMillis(delayedEventTime);
                 emitScheduleRides.add(ride);
                 curNextDelayedEventTime = delayedEventTime;
@@ -59,16 +58,18 @@ public class TaxiRideEventSource implements SourceFunction<TaxiRide> {
         }
 
         long previousTime = dataStartTime;
-        //while (!emitScheduleRides.isEmpty()) {
-        for(int i=0; i<=30; i++){
+        while (!emitScheduleRides.isEmpty()) {
             TaxiRide emittedRide = emitScheduleRides.poll();
             long sleepTime = Math.abs(emittedRide.eventTimeMillis - previousTime);
             previousTime = emittedRide.eventTimeMillis;
-//            try {
-//                Thread.sleep(sleepTime);
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
+            try {
+                Thread.sleep(sleepTime);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            emittedRide.setEventTimeMillis(Instant.now().toEpochMilli());
+            emitScheduleRides.add(emittedRide);
             sourceContext.collectWithTimestamp(emittedRide, emittedRide.eventTimeMillis);
         }
     }
@@ -85,5 +86,11 @@ public class TaxiRideEventSource implements SourceFunction<TaxiRide> {
             bufferedReader = null;
             dataStartTime = 0L;
         }
+    }
+
+    private long getDelayedEventTime(Long eventTime) {
+        long randDelay = randomDelay.nextInt((int) maxDelayMillis);
+        randDelay = Math.min(randDelay, maxDelayMillis) + 100;
+        return eventTime + randDelay;
     }
 }

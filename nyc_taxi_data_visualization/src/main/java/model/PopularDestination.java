@@ -1,9 +1,12 @@
 package model;
 
+import com.google.gson.Gson;
+
 import java.util.Objects;
 
 public class PopularDestination {
 
+    private static final Gson gson = new Gson();
     public Point locationCenter;
     public long passengers;
 
@@ -43,9 +46,6 @@ public class PopularDestination {
 
     @Override
     public String toString() {
-        return "PopularDestination{" +
-                "point=" + locationCenter +
-                ", passengers=" + passengers +
-                '}';
+        return gson.toJson(this);
     }
 }
