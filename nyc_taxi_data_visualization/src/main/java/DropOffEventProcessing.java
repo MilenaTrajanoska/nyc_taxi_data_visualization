@@ -38,7 +38,7 @@ public class DropOffEventProcessing {
         rides.filter(Objects::nonNull)
                 .assignTimestampsAndWatermarks(watermarkStrategy)
                 .keyBy(tr -> getGridCellCenterPoint(tr.getDropOffLong(), tr.getDropOffLat()))
-                .window(SlidingProcessingTimeWindows.of(Time.minutes(1), Time.seconds(30)))
+                .window(SlidingProcessingTimeWindows.of(Time.minutes(10), Time.seconds(60)))
                 .process(new AddPassengers())
                 .sinkTo(SinkFactory.getFlinkKafkaPopularDestinationsSink())
                 .setParallelism(5);
