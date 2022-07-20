@@ -5,6 +5,7 @@ import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
+import org.apache.flink.streaming.api.windowing.assigners.SlidingProcessingTimeWindows;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
@@ -30,14 +31,14 @@ public class DropOffEventProcessing {
                 .setParallelism(1);
 
         WatermarkStrategy<TaxiRide> watermarkStrategy =
-                WatermarkStrategy.<TaxiRide>forBoundedOutOfOrderness(Duration.ofMinutes(5))
+                WatermarkStrategy.<TaxiRide>forBoundedOutOfOrderness(Duration.ofMinutes(1))
                         .withTimestampAssigner(
                                 (ride, streamRecordTimestamp) -> ride.getEventTimeMillis());
 
         rides.filter(Objects::nonNull)
                 .assignTimestampsAndWatermarks(watermarkStrategy)
                 .keyBy(tr -> getGridCellCenterPoint(tr.getDropOffLong(), tr.getDropOffLat()))
-                .window(TumblingEventTimeWindows.of(Time.minutes(10)))
+                .window(SlidingProcessingTimeWindows.of(Time.minutes(1), Time.seconds(30)))
                 .process(new AddPassengers())
                 .sinkTo(SinkFactory.getFlinkKafkaPopularDestinationsSink())
                 .setParallelism(5);

@@ -247,7 +247,7 @@
         const ws = new WebSocket('ws://localhost:7071/ws');
         ws.onmessage = (webSocketMessage) => {
             console.log("Raw: " + webSocketMessage.data);
-            const popularDestination = String.fromCharCode(webSocketMessage.data);
+            var popularDestination = webSocketMessage.data.toString();
             popularDestination = JSON.parse(popularDestination);
             console.log("Destination received:" + popularDestination);
             drawPopularDestinationOnMap(popularDestination);
