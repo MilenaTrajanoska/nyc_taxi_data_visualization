@@ -76,16 +76,6 @@ signalTraps.forEach(type => {
   })
 })
 
-// fs.readFile('index.html', function (err, html) {
-//     if (err) {
-//         throw err; 
-//     }       
-//     http.createServer(function(request, response) {  
-//         response.writeHeader(200);  
-//         response.send(html);  
-//         response.end();  
-//     }).listen(8080);
-// });
 app.get('/', function(req, res) {
   res.sendFile(__dirname+'/index.html');
 });
