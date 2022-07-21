@@ -57,7 +57,7 @@
                 </a>
                 <h3 class="p-5">New York City Taxi Rides Dashboard</h3>
                 <div class="navbar-nav align-items-center ms-auto">
-                    <p>Last updated: </p>
+                    <p>Last updated: <span id="update-date"></span></p>
                 </div>
             </nav>
             <!-- Navbar End -->
@@ -99,7 +99,7 @@
                             <i class="fa fa-location-arrow fa-3x text-primary"></i>
                             <div class="ms-3">
                                 <p class="mb-2">Unique locations visited</p>
-                                <h6 class="mb-0">26</h6>
+                                <h6 class="mb-0" id="unique-locations">0</h6>
                             </div>
                         </div>
                     </div>
@@ -122,7 +122,7 @@
                             <div class="d-flex align-items-center justify-content-between mb-4">
                                 <h6 class="mb-0">Most popular Taxi Companies</h6>
                             </div>
-                            <canvas id="worldwide-sales"></canvas>
+                            <canvas id="popular-companies"></canvas>
                         </div>
                     </div>
                     <div class="col-sm-12 col-xl-6">
@@ -130,7 +130,7 @@
                             <div class="d-flex align-items-center justify-content-between mb-4">
                                 <h6 class="mb-0">Trip durations in the last 24h</h6>
                             </div>
-                            <canvas id="salse-revenue"></canvas>
+                            <canvas id="trip-duration"></canvas>
                         </div>
                     </div>
                 </div>
@@ -172,35 +172,74 @@
     <!-- Template Javascript -->
     <script src="js/main.js" type="text/javascript"></script>
     <script type="text/javascript">
-        const SCALE_POINT = 15;
-        const map_points = new Map();
+        const SCALE_POINT = 5;
+        const colors = ['green', 'yellow', 'red']
+
+
         const map = L.map('map').setView([40.7128, -74.0060], 15);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
+        
+        let map_points = new Map();
 
         function drawPopularDestinationOnMap(popularDestination) {
             if(popularDestination.locationCenter !== undefined && popularDestination.passengers !== undefined) {
                 const centerPoint = popularDestination.locationCenter;
                 if (map_points.has(centerPoint.latitude + '|' +  centerPoint.longitude)) {
-                    map.removeLayer(map_points[centerPoint.latitude + '|' +  centerPoint.longitude])
+                    map.removeLayer(map_points.get(centerPoint.latitude + '|' +  centerPoint.longitude));
+                    color_position = 0;
+                    if (popularDestination.passengers >= 10) {
+                        color_position = 2;
+                    }
+                    else if (popularDestination.passengers >= 5) {
+                        color_position = 1;
+                    }
+
                     var circle = L.circle([centerPoint.latitude, centerPoint.longitude], {
-                        color: 'red',
-                        fillColor: '#f03',
+                        color: colors[color_position],
+                        fillColor: colors[color_position],
                         fillOpacity: 0.5,
                         radius: popularDestination.passengers * SCALE_POINT
-                    }).addTo(map);
-                    map.set(centerPoint.latitude + '|' +  centerPoint.longitude, circle)
-                }
+                    }).bindPopup("<p>" + "Location latitude: " + centerPoint.latitude + "<br>" +
+                        "Location longitude: " + centerPoint.longitude + "<br>" +
+                        "Number of passengers: " + popularDestination.passengers +
+                        "<br>" + "Last updated: " + new Date().toLocaleString() + "</p>"
+                        ).addTo(map);
+                    map_points.set(centerPoint.latitude + '|' +  centerPoint.longitude, circle)
+                    
+                    setTimeout(function() {
+                        map_points.remove(circle.latlng.lat + '|' + circle.latlng.lng);
+                        circle.remove();
+                    }, 600000);
+                    }
                 else {
+                    color_position = 0;
+                    if (popularDestination.passengers >= 10) {
+                        color_position = 2;
+                    }
+                    else if (popularDestination.passengers >= 5) {
+                        color_position = 1;
+                    } 
+
                     var circle = L.circle([centerPoint.latitude, centerPoint.longitude], {
-                        color: 'red',
-                        fillColor: '#f03',
+                        color: colors[color_position],
+                        fillColor: colors[color_position],
                         fillOpacity: 0.5,
                         radius: popularDestination.passengers * SCALE_POINT
-                    }).addTo(map);
-                    map.set(centerPoint.latitude + '|' +  centerPoint.longitude, circle)
-                }   
+                    }).bindPopup("<p>" + "Location latitude: " + centerPoint.latitude + "<br>" +
+                        "Location longitude: " + centerPoint.longitude + "<br>" +
+                        "Number of passengers: " + popularDestination.passengers +
+                        "<br>" + "Last updated: " + new Date().toLocaleString() + "</p>"
+                        ).addTo(map);
+                    map_points.set(centerPoint.latitude + '|' +  centerPoint.longitude, circle)
+                    setTimeout(function() {
+                        map_points.remove(circle.latlng.lat + '|' + circle.latlng.lng);
+                        circle.remove();
+                    }, 600000);
+                    }
+                }
+                $('#unique-locations').text(map_points.size);
             }
         }
     </script>
@@ -209,9 +248,64 @@
         ws.onmessage = (webSocketMessage) => {
             var popularDestination = webSocketMessage.data.toString();
             popularDestination = JSON.parse(popularDestination);
-            console.log("Destination received:" + popularDestination);
             drawPopularDestinationOnMap(popularDestination);
+            $('#update-date').text(new Date().toLocaleString());
         };
+    </script>
+    <script>
+        function drawBarChart() {
+            var ctx1 = $("#popular-companies").get(0).getContext("2d");
+            var myChart1 = new Chart(ctx1, {
+                type: "bar",
+            data: {
+                labels: ["2016", "2017", "2018", "2019", "2020", "2021", "2022"],
+                datasets: [{
+                        label: "USA",
+                        data: [15, 30, 55, 65, 60, 80, 95],
+                        backgroundColor: "rgba(0, 156, 255, .7)"
+                    },
+                    {
+                        label: "UK",
+                        data: [8, 35, 40, 60, 70, 55, 75],
+                        backgroundColor: "rgba(0, 156, 255, .5)"
+                    },
+                    {
+                        label: "AU",
+                        data: [12, 25, 45, 55, 65, 70, 60],
+                        backgroundColor: "rgba(0, 156, 255, .3)"
+                    }
+                ]
+            },
+            options: {
+                responsive: true
+                }
+            });
+        }
+        drawBarChart();
+    </script>
+    <script>
+        function drawLineChart() {
+            var ctx3 = $("#trip-duration").get(0).getContext("2d");
+            var myChart3 = new Chart(ctx3, {
+                type: "line",
+                data: {
+                    labels: ["00:00", "01:00", "02:00", "03:00", "04:00", "05:00", 
+                     "06:00",  "07:00",  "08:00",  "09:00",  "10:00",  "11:00",  "12:00",  "13:00",
+                     "14:00",  "15:00",  "16:00",  "17:00",  "18:00",  "19:00",  "20:00",  "21:00",
+                     "22:00",  "23:00"],
+                    datasets: [{
+                    label: "Average trip durations",
+                    fill: true,
+                    backgroundColor: "rgba(0, 156, 255, .5)",
+                    data: [7, 8, 8, 9, 9, 9, 10, 11, 14, 14, 15, 7, 8, 8, 9, 9, 9, 10, 11, 14, 14, 10, 11, 14]
+                }]
+        },
+        options: {
+            responsive: true
+        }
+    });
+        }
+    drawLineChart();
     </script>
 </body>
 
