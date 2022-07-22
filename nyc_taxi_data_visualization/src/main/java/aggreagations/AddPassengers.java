@@ -15,6 +15,5 @@ public class AddPassengers extends ProcessWindowFunction<TaxiRide, PopularDestin
                 sumOfPassengers += r.getPassengerCnt();
             }
             out.collect(new PopularDestination(key, sumOfPassengers));
-            System.out.println("Collected");
         }
 }

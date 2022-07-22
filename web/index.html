@@ -72,7 +72,7 @@
                             <i class="fa fa-users fa-3x text-primary"></i>
                             <div class="ms-3">
                                 <p class="mb-2">Total Passengers</p>
-                                <h6 class="mb-0">1234</h6>
+                                <h6 class="mb-0" id="total-passengers">0</h6>
                             </div>
                         </div>
                     </div>
@@ -81,7 +81,7 @@
                             <i class="fa fa-taxi fa-3x text-primary"></i>
                             <div class="ms-3">
                                 <p class="mb-2">Total Trips</p>
-                                <h6 class="mb-0">345</h6>
+                                <h6 class="mb-0" id="total-trips">0</h6>
                             </div>
                         </div>
                     </div>
@@ -90,7 +90,7 @@
                             <i class="fa fa-road fa-3x text-primary"></i>
                             <div class="ms-3">
                                 <p class="mb-2">Travelled Distance</p>
-                                <h6 class="mb-0">5689 km</h6>
+                                <h6 class="mb-0"><span  id="total-distance">0</span> km</h6>
                             </div>
                         </div>
                     </div>
@@ -170,6 +170,35 @@
     <script src="lib/tempusdominus/js/tempusdominus-bootstrap-4.min.js" type="text/javascript"></script>
 
     <!-- Template Javascript -->
+    <script>
+        class Queue {
+            constructor(capacity=24) {
+                this.elements = [];
+                this.capacity = capacity;
+            }
+            enqueue(element) {
+                if (this.elements.length == this.capacity){
+                    this.elements.shift();
+
+                }
+                this.elements.push(element);
+            }
+            dequeue() {
+                if (this.capacity > 0) {
+                    return this.elements.shift();
+                }
+            }
+            peek() {
+                return this.elements[this.elements.length - 1];
+            }
+            length() {
+                return this.elements.length;
+            }
+            isEmpty() {
+                return this.length() === 0;
+            }
+        }
+    </script>
     <script src="js/main.js" type="text/javascript"></script>
     <script type="text/javascript">
         const SCALE_POINT = 5;
@@ -239,17 +268,15 @@
                     }, 600000);
                     }
                 }
+                let total_passengers = 0;
+
+                map_points.forEach(value => {
+                    total_passengers += value.getRadius() / SCALE_POINT;
+                });
+
                 $('#unique-locations').text(map_points.size);
+                $('#total-passengers').text(total_passengers);
             }
-    </script>
-    <script type="text/javascript">
-        const ws = new WebSocket('ws://localhost:7071/ws');
-        ws.onmessage = (webSocketMessage) => {
-            var popularDestination = webSocketMessage.data.toString();
-            popularDestination = JSON.parse(popularDestination);
-            drawPopularDestinationOnMap(popularDestination);
-            $('#update-date').text(new Date().toLocaleString());
-        };
     </script>
     <script>
         function drawBarChart() {
@@ -283,20 +310,50 @@
         drawBarChart();
     </script>
     <script>
-        function drawLineChart() {
+        var times_queue = new Queue(24);
+        var durations_queue = new Queue(24);
+        var km_queue = new Queue(24);
+        var num_trips_queue = new Queue(24);
+        var chart = null
+        
+        function pad(num, size) {
+            var s = "0" + num;
+            return s.substr(s.length-size);
+        }
+
+        function drawLineChart(tripDuration) {
+            if (chart !== null) {
+                chart.destroy();
+            }
+            var timestamp = tripDuration.date.time;
+            var averageDuration = tripDuration.sumDurations / tripDuration.numberOfTrips;
+            var km_passed = tripDuration.km_passed;
+            var num_trips = tripDuration.numberOfTrips;
+
+            times_queue.enqueue(pad(timestamp.hour, 2) + ":" + pad(timestamp.minute, 2));
+            durations_queue.enqueue(Math.ceil(averageDuration));
+            km_queue.enqueue(km_passed);
+            num_trips_queue.enqueue(num_trips);
+
+            var total_km = 0;
+            var total_trips = 0;
+
+            num_trips_queue.elements.forEach(element => total_trips += element);
+            km_queue.elements.forEach(element => total_km += element);
+
+            $('#total-distance').text(total_km);
+            $('#total-trips').text(total_trips);
+
             var ctx3 = $("#trip-duration").get(0).getContext("2d");
-            var myChart3 = new Chart(ctx3, {
+            chart = new Chart(ctx3, {
                 type: "line",
                 data: {
-                    labels: ["00:00", "01:00", "02:00", "03:00", "04:00", "05:00", 
-                     "06:00",  "07:00",  "08:00",  "09:00",  "10:00",  "11:00",  "12:00",  "13:00",
-                     "14:00",  "15:00",  "16:00",  "17:00",  "18:00",  "19:00",  "20:00",  "21:00",
-                     "22:00",  "23:00"],
+                    labels: times_queue.elements,
                     datasets: [{
-                    label: "Average trip durations",
+                    label: "Average trip duration (minutes)",
                     fill: true,
                     backgroundColor: "rgba(0, 156, 255, .5)",
-                    data: [7, 8, 8, 9, 9, 9, 10, 11, 14, 14, 15, 7, 8, 8, 9, 9, 9, 10, 11, 14, 14, 10, 11, 14]
+                    data: durations_queue.elements
                 }]
         },
         options: {
@@ -304,8 +361,26 @@
         }
     });
         }
-    drawLineChart();
+
     </script>
+
+        <script type="text/javascript">
+            const topic_popular_destinations = 'uwgbzh37-popular-destinations'
+            const topic_trip_durations = 'uwgbzh37-trip-durations'
+
+            const ws = new WebSocket('ws://localhost:7071/ws');
+            ws.onmessage = (webSocketMessage) => {
+                var message = JSON.parse(webSocketMessage.data.toString());
+                if (message.topic == topic_trip_durations) {
+                    console.log(message.message)
+                    drawLineChart(JSON.parse(message.message));
+                }
+                else if (message.topic == topic_popular_destinations) {
+                    drawPopularDestinationOnMap(JSON.parse(message.message));
+                    $('#update-date').text(new Date().toLocaleString());
+                }
+            };
+        </script>
 </body>
 
 </html>

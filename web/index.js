@@ -23,27 +23,34 @@ const kafka = new Kafka({
   },
 })
 
-const topic = 'uwgbzh37-popular-destinations'
+const topic_popular_destinations = 'uwgbzh37-popular-destinations'
+const topic_trip_durations = 'uwgbzh37-trip-durations'
+
 const consumer = kafka.consumer({groupId: 'test-group'})
 const run = async () => {
   await consumer.connect()
-  await consumer.subscribe({ topic, fromBeginning: true })
+  await consumer.subscribe({topic: topic_popular_destinations, fromBeginning: true })
+  await consumer.subscribe({topic: topic_trip_durations, fromBeginning: true })
 }
 run().catch(e => console.error(`[example/consumer] ${e.message}`, e))
 
+let fist_start = true;
 
 const wss = new WebSocket.Server({ port: 7071 });
 const clients = new Map();
 wss.on('connection', (ws) => {
+if (fist_start) {
+
   consumer.run({
     eachMessage: async ({ topic, partition, message }) => {
       const prefix = `${topic}[${partition} | ${message.offset}] / ${message.timestamp}`
       console.log(`- ${prefix} ${message.key}#${message.value}`)
-      ws.send(`${message.value}`);
+      ws.send(JSON.stringify({topic: `${topic}`, message: `${message.value}`}));
     },
   })
-});
-wss.on('message', (messageAsString) => {
+  
+  fist_start = false;
+}
 });
 wss.on("close", () => {
   clients.delete(ws);

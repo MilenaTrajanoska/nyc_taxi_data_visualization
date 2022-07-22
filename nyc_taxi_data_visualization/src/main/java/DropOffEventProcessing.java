@@ -1,19 +1,15 @@
 import aggreagations.AddPassengers;
 import aggreagations.AverageDuration;
 import model.TaxiRide;
-import model.TripDuration;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.assigners.SlidingProcessingTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
-import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import sink.SinkFactory;
 import source.TaxiRideEventSource;
 
-import java.sql.Date;
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.Objects;
 
 import static util.GeoUtils.getGridCellCenterPoint;
@@ -45,10 +41,8 @@ public class DropOffEventProcessing {
 
         rides.filter(Objects::nonNull)
                 .assignTimestampsAndWatermarks(watermarkStrategy)
-                .map(TaxiRide::getTripDuration)
-                .windowAll(SlidingProcessingTimeWindows.of(Time.hours(1), Time.hours(1)))
+                .windowAll(SlidingProcessingTimeWindows.of(Time.minutes(1), Time.minutes(1)))
                 .process(new AverageDuration())
-                .map(duration -> new TripDuration(duration, LocalDateTime.now()))
                 .sinkTo(SinkFactory.getFlinkKafkaTripDurationSink())
                 .setParallelism(5);
 
