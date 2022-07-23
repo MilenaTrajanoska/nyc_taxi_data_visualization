@@ -1,5 +1,8 @@
 import aggreagations.AddPassengers;
 import aggreagations.AverageDuration;
+import aggreagations.CountTrips;
+import model.Point;
+import model.StartEndLocation;
 import model.TaxiRide;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
@@ -44,6 +47,23 @@ public class DropOffEventProcessing {
                 .windowAll(SlidingProcessingTimeWindows.of(Time.minutes(1), Time.minutes(1)))
                 .process(new AverageDuration())
                 .sinkTo(SinkFactory.getFlinkKafkaTripDurationSink())
+                .setParallelism(5);
+
+        rides.filter(Objects::nonNull)
+                .assignTimestampsAndWatermarks(watermarkStrategy)
+                .keyBy(tr -> {
+                    Point startPoint = getGridCellCenterPoint(tr.getPickUpLong(), tr.getPickUpLat());
+                    Point endPoint = getGridCellCenterPoint(tr.getDropOffLong(), tr.getDropOffLat());
+                    return new StartEndLocation(
+                            startPoint.getLatitude(),
+                            startPoint.getLongitude(),
+                            endPoint.getLatitude(),
+                            endPoint.getLongitude()
+                    );
+                })
+                .window(SlidingProcessingTimeWindows.of(Time.minutes(10), Time.seconds(60)))
+                .process(new CountTrips())
+                .sinkTo(SinkFactory.getFlinkKafkaTripCountSink())
                 .setParallelism(5);
 
         env.execute("Popular destinations");

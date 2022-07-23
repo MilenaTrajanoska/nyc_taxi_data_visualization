@@ -1,6 +1,7 @@
 package sink;
 
 import model.PopularDestination;
+import model.TripCount;
 import model.TripDuration;
 import org.apache.flink.connector.kafka.sink.KafkaSink;
 
@@ -12,6 +13,8 @@ public class SinkFactory {
     private static KafkaSink<PopularDestination> popularDestinationFlinkKafkaProducer;
     private static KafkaSink<String> stringKafkaProducer;
     private static KafkaSink<TripDuration> tripDurationKafkaProducer;
+    private static KafkaSink<TripCount> tripCountKafkaProducer;
+
 
     private SinkFactory() {}
 
@@ -34,6 +37,13 @@ public class SinkFactory {
             tripDurationKafkaProducer = KafkaSinkTripDuration.build();
         }
         return tripDurationKafkaProducer;
+    }
+
+    public static synchronized KafkaSink<TripCount> getFlinkKafkaTripCountSink() {
+        if (tripCountKafkaProducer == null) {
+            tripCountKafkaProducer = KafkaSinkTripCount.build();
+        }
+        return tripCountKafkaProducer;
     }
     
 }

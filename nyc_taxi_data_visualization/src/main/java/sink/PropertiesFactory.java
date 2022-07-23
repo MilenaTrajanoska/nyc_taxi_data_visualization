@@ -11,6 +11,7 @@ public class PropertiesFactory {
         props.put("sasl.jaas.config", "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"uwgbzh37\" password=\"O4n_4-ui5DDzfORdAbqNBlYhl7gwJdd7\";");
         props.put("topic.popular-destinations", "uwgbzh37-popular-destinations");
         props.put("topic.trip-durations", "uwgbzh37-trip-durations");
+        props.put("topic.trip-count", "uwgbzh37-trip-count");
         props.put("transaction.timeout.ms", 6000000);
         props.put("retries", 5);
         props.put("security.protocol", "SASL_SSL");
