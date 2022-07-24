@@ -12,6 +12,7 @@ public class PropertiesFactory {
         props.put("topic.popular-destinations", "uwgbzh37-popular-destinations");
         props.put("topic.trip-durations", "uwgbzh37-trip-durations");
         props.put("topic.trip-count", "uwgbzh37-trip-count");
+        props.put("topic.trip-hour-minute", "uwgbzh37-trip-hour-minute");
         props.put("transaction.timeout.ms", 6000000);
         props.put("retries", 5);
         props.put("security.protocol", "SASL_SSL");

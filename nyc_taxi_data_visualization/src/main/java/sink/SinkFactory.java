@@ -3,6 +3,7 @@ package sink;
 import model.PopularDestination;
 import model.TripCount;
 import model.TripDuration;
+import model.TripHourMinute;
 import org.apache.flink.connector.kafka.sink.KafkaSink;
 
 import java.io.IOException;
@@ -14,7 +15,7 @@ public class SinkFactory {
     private static KafkaSink<String> stringKafkaProducer;
     private static KafkaSink<TripDuration> tripDurationKafkaProducer;
     private static KafkaSink<TripCount> tripCountKafkaProducer;
-
+    private static KafkaSink<TripHourMinute> tripHourMinuteKafkaProducer;
 
     private SinkFactory() {}
 
@@ -44,6 +45,13 @@ public class SinkFactory {
             tripCountKafkaProducer = KafkaSinkTripCount.build();
         }
         return tripCountKafkaProducer;
+    }
+
+    public static synchronized KafkaSink<TripHourMinute> getFlinkKafkaTripHourMinuteSink() {
+        if (tripHourMinuteKafkaProducer == null) {
+            tripHourMinuteKafkaProducer = KafkaSinkTripHourMinute.build();
+        }
+        return tripHourMinuteKafkaProducer;
     }
     
 }

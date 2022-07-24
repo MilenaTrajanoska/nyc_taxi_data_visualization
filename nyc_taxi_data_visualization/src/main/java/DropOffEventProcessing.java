@@ -1,6 +1,8 @@
 import aggreagations.AddPassengers;
 import aggreagations.AverageDuration;
+import aggreagations.CountRidesPerMinute;
 import aggreagations.CountTrips;
+import model.HourMinuteObject;
 import model.Point;
 import model.StartEndLocation;
 import model.TaxiRide;
@@ -50,21 +52,29 @@ public class DropOffEventProcessing {
                 .sinkTo(SinkFactory.getFlinkKafkaTripDurationSink())
                 .setParallelism(5);
 
+//        rides.filter(Objects::nonNull)
+//                .assignTimestampsAndWatermarks(watermarkStrategy)
+//                .keyBy(tr -> {
+//                    Point startPoint = getGridSegmentCenterPoint(tr.getPickUpLong(), tr.getPickUpLat());
+//                    Point endPoint = getGridSegmentCenterPoint(tr.getDropOffLong(), tr.getDropOffLat());
+//                    return new StartEndLocation(
+//                            startPoint.getLatitude(),
+//                            startPoint.getLongitude(),
+//                            endPoint.getLatitude(),
+//                            endPoint.getLongitude()
+//                    );
+//                })
+//                .window(SlidingProcessingTimeWindows.of(Time.minutes(10), Time.seconds(60)))
+//                .process(new CountTrips())
+//                .sinkTo(SinkFactory.getFlinkKafkaTripCountSink())
+//                .setParallelism(5);
+
         rides.filter(Objects::nonNull)
                 .assignTimestampsAndWatermarks(watermarkStrategy)
-                .keyBy(tr -> {
-                    Point startPoint = getGridSegmentCenterPoint(tr.getPickUpLong(), tr.getPickUpLat());
-                    Point endPoint = getGridSegmentCenterPoint(tr.getDropOffLong(), tr.getDropOffLat());
-                    return new StartEndLocation(
-                            startPoint.getLatitude(),
-                            startPoint.getLongitude(),
-                            endPoint.getLatitude(),
-                            endPoint.getLongitude()
-                    );
-                })
+                .keyBy(tr -> new HourMinuteObject(tr.getPickUpDate().getHour(), tr.getPickUpDate().getMinute()))
                 .window(SlidingProcessingTimeWindows.of(Time.minutes(10), Time.seconds(60)))
-                .process(new CountTrips())
-                .sinkTo(SinkFactory.getFlinkKafkaTripCountSink())
+                .process(new CountRidesPerMinute())
+                .sinkTo(SinkFactory.getFlinkKafkaTripHourMinuteSink())
                 .setParallelism(5);
 
         env.execute("Popular destinations");
