@@ -15,6 +15,7 @@ import sink.SinkFactory;
 import source.TaxiRideEventSource;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Objects;
 
 import static util.GeoUtils.getGridCellCenterPoint;
@@ -71,7 +72,7 @@ public class DropOffEventProcessing {
 
         rides.filter(Objects::nonNull)
                 .assignTimestampsAndWatermarks(watermarkStrategy)
-                .keyBy(tr -> new HourMinuteObject(tr.getPickUpDate().getHour(), tr.getPickUpDate().getMinute()))
+                .keyBy(tr -> new HourMinuteObject(LocalDateTime.now().getHour(), LocalDateTime.now().getMinute()))
                 .window(SlidingProcessingTimeWindows.of(Time.minutes(10), Time.seconds(60)))
                 .process(new CountRidesPerMinute())
                 .sinkTo(SinkFactory.getFlinkKafkaTripHourMinuteSink())

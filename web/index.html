@@ -110,8 +110,8 @@
                     </div>
                 </div>
             </div>
-
-            <div class="container-fluid pt-4 px-4">
+            <!-- Hide buttons because one map is being displayed -->
+            <div class="container-fluid pt-4 px-4 d-none">
                 <div class="row">
                     <div class="col-sm-4 col-xl-4">
                         <div>
@@ -146,18 +146,18 @@
             <!-- Sales Chart Start -->
             <div class="container-fluid pt-4 px-4">
                 <div class="row g-4">
-                    <!-- <div class="col-sm-12 col-xl-6">
+                    <div class="col-sm-12 col-xl-6">
                         <div class="bg-light text-center rounded p-4">
                             <div class="d-flex align-items-center justify-content-between mb-4">
-                                <h6 class="mb-0">Most popular Taxi Companies</h6>
+                                <h6 class="mb-0">Number of trips taken in the last 30 minuts</h6>
                             </div>
-                            <canvas id="popular-companies"></canvas>
+                            <canvas id="number-of-trips"></canvas>
                         </div>
-                    </div> -->
-                    <div class="col-sm-12 col-xl-12">
+                    </div>
+                    <div class="col-sm-12 col-xl-6">
                         <div class="bg-light text-center rounded p-4">
                             <div class="d-flex align-items-center justify-content-between mb-4">
-                                <h6 class="mb-0">Trip durations in the last 24h</h6>
+                                <h6 class="mb-0">Trip durations in the last hour</h6>
                             </div>
                             <canvas id="trip-duration"></canvas>
                         </div>
@@ -254,10 +254,12 @@
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        const map_traffic = L.map('map-traffic').setView([40.7128, -74.0060], 15);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map_traffic);
+        // Remove map creation for drawing frequent routes
+
+        // const map_traffic = L.map('map-traffic').setView([40.7128, -74.0060], 15);
+        // L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        //     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        // }).addTo(map_traffic);
         
         let map_points = new Map();
 
@@ -366,27 +368,35 @@
             }, 600000);
         }
     </script>
-    <!-- <script>
-        function drawBarChart() {
-            var ctx1 = $("#popular-companies").get(0).getContext("2d");
-            var myChart1 = new Chart(ctx1, {
+    <script>
+        var number_trip_times_queue = new Queue(30);
+        var number_trips_queue = new Queue(30);
+        var trips_chart = null;
+
+        function pad(num, size) {
+            var s = "0" + num;
+            return s.substr(s.length-size);
+        }
+
+        function drawBarChart(tripHourMinute) {
+            if (trips_chart !== null && trips_chart !== undefined) {
+                trips_chart.destroy();
+            }
+
+            number_trip_times_queue.enqueue(pad(tripHourMinute.hour, 2) + ":" + pad(tripHourMinute.minute, 2));
+            number_trips_queue.enqueue(tripHourMinute.count);
+
+            var ctx1 = $("#number-of-trips").get(0).getContext("2d");
+            var trips_chart = new Chart(ctx1, {
                 type: "bar",
             data: {
-                labels: ["2016", "2017", "2018", "2019", "2020", "2021", "2022"],
-                datasets: [{
-                        label: "USA",
-                        data: [15, 30, 55, 65, 60, 80, 95],
+                labels: number_trip_times_queue.elements,
+                datasets: [
+                    {
+
+                        label: "Number of trips",
+                        data: num_trips_queue.elements,
                         backgroundColor: "rgba(0, 156, 255, .7)"
-                    },
-                    {
-                        label: "UK",
-                        data: [8, 35, 40, 60, 70, 55, 75],
-                        backgroundColor: "rgba(0, 156, 255, .5)"
-                    },
-                    {
-                        label: "AU",
-                        data: [12, 25, 45, 55, 65, 70, 60],
-                        backgroundColor: "rgba(0, 156, 255, .3)"
                     }
                 ]
             },
@@ -395,19 +405,14 @@
                 }
             });
         }
-        drawBarChart();
-    </script> -->
+
+    </script>
     <script>
         var times_queue = new Queue(24);
         var durations_queue = new Queue(24);
         var km_queue = new Queue(24);
         var num_trips_queue = new Queue(24);
         var chart = null
-        
-        function pad(num, size) {
-            var s = "0" + num;
-            return s.substr(s.length-size);
-        }
 
         async function drawLineChart(tripDuration) {
             if (chart !== null) {
@@ -454,7 +459,7 @@
         <script type="text/javascript">
             const topic_popular_destinations = 'uwgbzh37-popular-destinations'
             const topic_trip_durations = 'uwgbzh37-trip-durations'
-            const topic_trip_count = 'uwgbzh37-trip-count'
+            const topic_trip_hour_minute = 'uwgbzh37-trip-hour-minute'
 
             const ws = new WebSocket('ws://localhost:7071/ws');
             ws.onmessage = (webSocketMessage) => {
@@ -466,9 +471,8 @@
                     drawPopularDestinationOnMap(JSON.parse(message.message));
                     $('#update-date').text(new Date().toLocaleString());
                 }
-                else if (message.topic == topic_trip_count) {
-                    drawRouteOnMap(JSON.parse(message.message));
-                    $('#update-date').text(new Date().toLocaleString());
+                else if (message.topic == topic_trip_hour_minute) {
+                    drawBarChart(JSON.parse(message.message));
                 }
             };
         </script>
