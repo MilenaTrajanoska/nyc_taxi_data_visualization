@@ -25,12 +25,14 @@ const kafka = new Kafka({
 
 const topic_popular_destinations = 'uwgbzh37-popular-destinations'
 const topic_trip_durations = 'uwgbzh37-trip-durations'
+const topic_trip_count = 'uwgbzh37-trip-count'
 
 const consumer = kafka.consumer({groupId: 'test-group'})
 const run = async () => {
   await consumer.connect()
   await consumer.subscribe({topic: topic_popular_destinations, fromBeginning: true })
   await consumer.subscribe({topic: topic_trip_durations, fromBeginning: true })
+  await consumer.subscribe({topic: topic_trip_count, fromBeginning: true})
 }
 run().catch(e => console.error(`[example/consumer] ${e.message}`, e))
 

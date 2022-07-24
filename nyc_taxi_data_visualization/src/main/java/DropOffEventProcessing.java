@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.util.Objects;
 
 import static util.GeoUtils.getGridCellCenterPoint;
+import static util.GeoUtils.getGridSegmentCenterPoint;
 
 public class DropOffEventProcessing {
 
@@ -52,8 +53,8 @@ public class DropOffEventProcessing {
         rides.filter(Objects::nonNull)
                 .assignTimestampsAndWatermarks(watermarkStrategy)
                 .keyBy(tr -> {
-                    Point startPoint = getGridCellCenterPoint(tr.getPickUpLong(), tr.getPickUpLat());
-                    Point endPoint = getGridCellCenterPoint(tr.getDropOffLong(), tr.getDropOffLat());
+                    Point startPoint = getGridSegmentCenterPoint(tr.getPickUpLong(), tr.getPickUpLat());
+                    Point endPoint = getGridSegmentCenterPoint(tr.getDropOffLong(), tr.getDropOffLat());
                     return new StartEndLocation(
                             startPoint.getLatitude(),
                             startPoint.getLongitude(),

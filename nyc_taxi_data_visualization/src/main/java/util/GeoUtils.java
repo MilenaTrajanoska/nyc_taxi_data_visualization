@@ -46,6 +46,9 @@ public class GeoUtils {
     // ( LAT_NORTH - LAT_SOUTH ) / DELTA_LON
     public static final int NUMBER_OF_GRID_Y = (int) Math.ceil(LAT_HEIGHT / DELTA_LAT);
 
+    public static final int SCALING_FACTOR_FOR_SEGMENTS = 30;
+    public static final int NUMBER_OF_GRID_SEGMENTS = (int) Math.ceil(LON_WIDTH / (DELTA_LON * SCALING_FACTOR_FOR_SEGMENTS));
+
     public static final float DEG_LEN = 110.25f;
 
     /**
@@ -75,6 +78,31 @@ public class GeoUtils {
         int yIndex = (int) Math.floor((LAT_NORTH - lat) / DELTA_LAT);
 
         return xIndex + (yIndex * NUMBER_OF_GRID_X);
+    }
+
+    public static int mapToGridSegment(float lon, float lat) {
+        double delta_lon = DELTA_LON * SCALING_FACTOR_FOR_SEGMENTS;
+        double delta_lat = DELTA_LAT * SCALING_FACTOR_FOR_SEGMENTS;
+
+        int xIndex = (int) Math.floor((Math.abs(LON_WEST) - Math.abs(lon)) / delta_lon);
+        int yIndex = (int) Math.floor((LAT_NORTH - lat) / delta_lat);
+
+        return xIndex + (yIndex * NUMBER_OF_GRID_SEGMENTS);
+    }
+
+    public static float getGridSegmentCenterLon(int gridCellId) {
+
+        int xIndex = gridCellId % NUMBER_OF_GRID_SEGMENTS;
+
+        return (float) (Math.abs(LON_WEST) - (xIndex * (DELTA_LON * SCALING_FACTOR_FOR_SEGMENTS)) - ((DELTA_LON * SCALING_FACTOR_FOR_SEGMENTS) / 2)) * -1.0f;
+    }
+
+    public static float getGridSegmentCenterLat(int gridCellId) {
+
+        int xIndex = gridCellId % NUMBER_OF_GRID_SEGMENTS;
+        int yIndex = (gridCellId - xIndex) / NUMBER_OF_GRID_SEGMENTS;
+
+        return (float) (LAT_NORTH - (yIndex * (DELTA_LAT * SCALING_FACTOR_FOR_SEGMENTS)) - ((DELTA_LAT * SCALING_FACTOR_FOR_SEGMENTS)/ 2));
     }
 
     /**
@@ -239,6 +267,13 @@ public class GeoUtils {
         int gridId = mapToGridCell(longitude, latitude);
         float centerLon = getGridCellCenterLon(gridId);
         float centerLat = getGridCellCenterLat(gridId);
+        return new Point(centerLon, centerLat);
+    }
+
+    public static Point getGridSegmentCenterPoint(float longitude, float latitude) {
+        int gridId = mapToGridSegment(longitude, latitude);
+        float centerLon = getGridSegmentCenterLon(gridId);
+        float centerLat = getGridSegmentCenterLat(gridId);
         return new Point(centerLon, centerLat);
     }
 }

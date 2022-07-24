@@ -15,9 +15,11 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
         integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
         crossorigin=""/>
-        <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
         integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
         crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
     
     <!-- Google Web Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -37,6 +39,11 @@
 
     <!-- Template Stylesheet -->
     <link href="css/style.css" type="text/css" rel="stylesheet">
+    <style>
+        .leaflet-control-container .leaflet-routing-container-hide {
+            display: none;
+        }
+    </style>
 </head>
 
 <body>
@@ -62,8 +69,6 @@
             </nav>
             <!-- Navbar End -->
 
-
-            <!-- Sale & Revenue Start -->
             <div class="container-fluid pt-4 px-4">
                 <div class="row g-4">
                     <p>The statistics are aggregated in intervals of 10 minutes.</p>
@@ -105,27 +110,51 @@
                     </div>
                 </div>
             </div>
-            <!-- Sale & Revenue End -->
 
-            <!-- MAP -->
-            <div class="container-fluid pt-4 px-5">
+            <div class="container-fluid pt-4 px-4">
+                <div class="row">
+                    <div class="col-sm-4 col-xl-4">
+                        <div>
+                            <div class="ms-3">
+                                <button class="btn btn-dark" disabled="true" id="pd-map-button"><p class="pt-3">Popular Destinations Map</p></button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4 col-xl-4">
+                        <div>
+                            <div class="ms-3">
+                                <button class="btn btn-dark" id="t-map-button"><p class="pt-3">Traffic Map</p></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- MAP popular destinations -->
+            <div class="container-fluid pt-4 px-5" id="popular-destinations-container">
                 <div class="row">
                     <div id="map" style="height: 600px;"></div>
+                </div>
+            </div>
+            
+            <!-- Map traffic -->
+            <div class="container-fluid pt-4 px-5 d-none" id="traffic-container">
+                <div class="row">
+                    <div id="map-traffic" style="height: 600px;"></div>
                 </div>
             </div>
 
             <!-- Sales Chart Start -->
             <div class="container-fluid pt-4 px-4">
                 <div class="row g-4">
-                    <div class="col-sm-12 col-xl-6">
+                    <!-- <div class="col-sm-12 col-xl-6">
                         <div class="bg-light text-center rounded p-4">
                             <div class="d-flex align-items-center justify-content-between mb-4">
                                 <h6 class="mb-0">Most popular Taxi Companies</h6>
                             </div>
                             <canvas id="popular-companies"></canvas>
                         </div>
-                    </div>
-                    <div class="col-sm-12 col-xl-6">
+                    </div> -->
+                    <div class="col-sm-12 col-xl-12">
                         <div class="bg-light text-center rounded p-4">
                             <div class="d-flex align-items-center justify-content-between mb-4">
                                 <h6 class="mb-0">Trip durations in the last 24h</h6>
@@ -171,6 +200,21 @@
 
     <!-- Template Javascript -->
     <script>
+        $('#pd-map-button').click(function() {
+            $('#popular-destinations-container').removeClass('d-none');
+            $(this).prop('disabled', true);
+            $('#t-map-button').prop('disabled', false);
+            $('#traffic-container').addClass('d-none');
+        });
+
+        $('#t-map-button').click(function() {
+            $('#traffic-container').removeClass('d-none');
+            $(this).prop('disabled', true);
+            $('#pd-map-button').prop('disabled', false);
+            $('#popular-destinations-container').addClass('d-none');
+        });
+    </script>
+    <script>
         class Queue {
             constructor(capacity=24) {
                 this.elements = [];
@@ -209,10 +253,15 @@
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
+
+        const map_traffic = L.map('map-traffic').setView([40.7128, -74.0060], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map_traffic);
         
         let map_points = new Map();
 
-        function drawPopularDestinationOnMap(popularDestination) {
+        async function drawPopularDestinationOnMap(popularDestination) {
             if(popularDestination.locationCenter !== undefined && popularDestination.passengers !== undefined) {
                 const centerPoint = popularDestination.locationCenter;
                 if (map_points.has(centerPoint.latitude + '|' +  centerPoint.longitude)) {
@@ -277,8 +326,47 @@
                 $('#unique-locations').text(map_points.size);
                 $('#total-passengers').text(total_passengers);
             }
+
+        async function drawRouteOnMap(route) {
+
+            start_longitude = route.startLongitude;
+            start_latitude = route.startLatitude;
+            end_longitude = route.endLongitude;
+            end_latitude = route.endLatitude;
+
+            // const routing_url_base = `https://routing.openstreetmap.de/routed-bike/route/v1/driving/${start_longitude},${start_latitude};${end_longitude},${end_latitude}?overview=full&geometries=geojson`;
+
+            await new Promise(r => setTimeout(r, 1000));
+
+            // latlngs = [
+            //     [start_latitude, start_longitude],
+            //     [end_latitude, end_longitude]
+            // ]
+
+            color_position = 0;
+            if (route.numberOfTrips >= 5) {
+                color_position = 2;
+            }
+            else if (route.numberOfTrips >= 2) {
+                color_position = 1;
+            } 
+
+            var polyline = L.Routing.control({
+                waypoints: [
+                    L.latLng(start_latitude, start_longitude),
+                    L.latLng(end_latitude, end_longitude)
+                ],
+                color: colors[color_position],
+                fitSelectedRoutes: false,
+            }).addTo(map_traffic);
+            // var polyline = L.polyline(latlngs, {color: colors[color_position]}).addTo(map_traffic);
+
+            setTimeout(function() {
+                polyline.remove();
+            }, 600000);
+        }
     </script>
-    <script>
+    <!-- <script>
         function drawBarChart() {
             var ctx1 = $("#popular-companies").get(0).getContext("2d");
             var myChart1 = new Chart(ctx1, {
@@ -308,7 +396,7 @@
             });
         }
         drawBarChart();
-    </script>
+    </script> -->
     <script>
         var times_queue = new Queue(24);
         var durations_queue = new Queue(24);
@@ -321,7 +409,7 @@
             return s.substr(s.length-size);
         }
 
-        function drawLineChart(tripDuration) {
+        async function drawLineChart(tripDuration) {
             if (chart !== null) {
                 chart.destroy();
             }
@@ -361,22 +449,25 @@
         }
     });
         }
-
     </script>
 
         <script type="text/javascript">
             const topic_popular_destinations = 'uwgbzh37-popular-destinations'
             const topic_trip_durations = 'uwgbzh37-trip-durations'
+            const topic_trip_count = 'uwgbzh37-trip-count'
 
             const ws = new WebSocket('ws://localhost:7071/ws');
             ws.onmessage = (webSocketMessage) => {
                 var message = JSON.parse(webSocketMessage.data.toString());
                 if (message.topic == topic_trip_durations) {
-                    console.log(message.message)
                     drawLineChart(JSON.parse(message.message));
                 }
                 else if (message.topic == topic_popular_destinations) {
                     drawPopularDestinationOnMap(JSON.parse(message.message));
+                    $('#update-date').text(new Date().toLocaleString());
+                }
+                else if (message.topic == topic_trip_count) {
+                    drawRouteOnMap(JSON.parse(message.message));
                     $('#update-date').text(new Date().toLocaleString());
                 }
             };
