@@ -15,6 +15,18 @@ public class TripHourMinute {
         this.count = count;
     }
 
+    public int getHour() {
+        return hour;
+    }
+
+    public int getMinute() {
+        return minute;
+    }
+
+    public long getCount() {
+        return count;
+    }
+
     @Override
     public String toString() {
         return gson.toJson(this);

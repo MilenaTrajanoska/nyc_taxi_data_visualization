@@ -36,20 +36,61 @@ const run = async () => {
 }
 run().catch(e => console.error(`[example/consumer] ${e.message}`, e))
 
+let last_offset_topic_popular_destinations = null;
+let last_offset_topic_trip_durations = null;
+let last_offset_topic_trip_counts = null;
+
 const wss = new WebSocket.Server({ port: 7071 });
-const clients = new Map();
+
 wss.on('connection', (ws) => {
+  
+  let partitions = [0, 1, 2, 3, 4];
+
+  if (last_offset_topic_popular_destinations !== null) {
+    for (partition in partitions) {
+      consumer.seek({ topic: topic_popular_destinations, partition: partition, offset: last_offset_topic_popular_destinations})
+    }
+  }
+
+  if (last_offset_topic_trip_counts !== null) {
+    for (partition in partitions) {
+      consumer.seek({ topic: topic_trip_hour_minute, partition: partition, offset: last_offset_topic_trip_counts})
+    }
+  }
+
+  if (last_offset_topic_trip_durations !== null) {
+    for (partition in partitions) {
+      consumer.seek({ topic: topic_trip_durations, partition: partition, offset: last_offset_topic_trip_durations})
+    }
+  }
+  try {
   consumer.run({
     eachMessage: async ({ topic, partition, message }) => {
+      
+      if (topic == topic_popular_destinations) {
+        last_offset_topic_popular_destinations = message.offset > 50 ? message.offset - 50 : message.offset - 1;
+      }
+      else if (topic == topic_trip_durations) {
+        last_offset_topic_trip_durations = message.offset > 24 ? message.offset - 24 : message.offset - 1;
+      }
+      else if (topic == topic_trip_hour_minute) {
+        last_offset_topic_trip_counts = message.offset > 30 ? message.offset - 30 : message.offset - 1;
+      }
+
       const prefix = `${topic}[${partition} | ${message.offset}] / ${message.timestamp}`
       console.log(`- ${prefix} ${message.key}#${message.value}`)
       ws.send(JSON.stringify({topic: `${topic}`, message: `${message.value}`}));
     },
   })
+}catch(error) {
+  console.log(error);
 }
-});
-wss.on("close", () => {
-  clients.delete(ws);
+}
+
+);
+
+wss.on("close", (ws) => {
+  ws.close();
 });
 
 

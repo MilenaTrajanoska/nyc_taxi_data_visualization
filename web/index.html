@@ -378,7 +378,7 @@
             return s.substr(s.length-size);
         }
 
-        function drawBarChart(tripHourMinute) {
+        async function drawBarChart(tripHourMinute) {
             if (trips_chart !== null && trips_chart !== undefined) {
                 trips_chart.destroy();
             }
@@ -387,7 +387,7 @@
             number_trips_queue.enqueue(tripHourMinute.count);
 
             var ctx1 = $("#number-of-trips").get(0).getContext("2d");
-            var trips_chart = new Chart(ctx1, {
+            trips_chart = new Chart(ctx1, {
                 type: "bar",
             data: {
                 labels: number_trip_times_queue.elements,
@@ -395,7 +395,7 @@
                     {
 
                         label: "Number of trips",
-                        data: num_trips_queue.elements,
+                        data: number_trips_queue.elements,
                         backgroundColor: "rgba(0, 156, 255, .7)"
                     }
                 ]
