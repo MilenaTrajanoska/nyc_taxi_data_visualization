@@ -47,7 +47,7 @@ public class DropOffEventProcessing {
 
         rides.filter(Objects::nonNull)
                 .assignTimestampsAndWatermarks(watermarkStrategy)
-                .windowAll(SlidingProcessingTimeWindows.of(Time.minutes(1), Time.minutes(1)))
+                .windowAll(SlidingProcessingTimeWindows.of(Time.minutes(10), Time.minutes(10))) // tumbling window is broken
                 .process(new AverageDuration())
                 .sinkTo(SinkFactory.getFlinkKafkaTripDurationSink())
                 .setParallelism(5);
@@ -71,7 +71,7 @@ public class DropOffEventProcessing {
 
         rides.filter(Objects::nonNull)
                 .assignTimestampsAndWatermarks(watermarkStrategy)
-                .windowAll(SlidingProcessingTimeWindows.of(Time.minutes(1), Time.minutes(1)))
+                .windowAll(SlidingProcessingTimeWindows.of(Time.minutes(10), Time.minutes(10))) // tumbling window is broken
                 .process(new CountRidesPerMinute())
                 .sinkTo(SinkFactory.getFlinkKafkaTripHourMinuteSink())
                 .setParallelism(5);
