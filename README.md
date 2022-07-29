@@ -12,7 +12,9 @@ The architecture of the application contains the following components:
   * Kafka consumer (on the Back-End) - a kafka consumer on the Back-End of the Web applicaiton, which constantly listens for new messages on each of the three above-defined topics.
   * Web socket - the Front-End and the Back-End of the Web application communicate via Web Sockets. Each time the Kafka consumer recieves a new message it's sent to the Web socket and the Front-End is updated.
   * Visualization - the Front-End part of the Web application. It visualizes the events on a leaflet.js map, every time a new message is received from the Web socket. Additionally, chart.js is used for representing the charts for the average trip durations and the number of trips taken within a 10 minute time window.
+
 The entire architecture is displayed in the figure in the following section.
+
 The application section is a reference to a video showing the main application functionalities.
 ## Architecture
 ![alt text](https://github.com/MilenaTrajanoska/nyc_taxi_data_visualization/blob/main/img/flink-kafka-ws-architecture.jpg?raw=true)
