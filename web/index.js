@@ -8,6 +8,8 @@ var app = express();
 app.use(express.static(__dirname+'/public'));
 app.listen(8080)
 
+var client_sockets = []
+
 const kafka = new Kafka({
   logLevel: logLevel.INFO,
   brokers: ["tricycle-01.srvs.cloudkafka.com:9094",
@@ -43,6 +45,8 @@ let last_offset_topic_trip_counts = null;
 const wss = new WebSocket.Server({ port: 7071 });
 
 wss.on('connection', (ws) => {
+
+  client_sockets.push(ws);
   
   let partitions = [0, 1, 2, 3, 4];
 
@@ -79,7 +83,9 @@ wss.on('connection', (ws) => {
 
       const prefix = `${topic}[${partition} | ${message.offset}] / ${message.timestamp}`
       console.log(`- ${prefix} ${message.key}#${message.value}`)
-      ws.send(JSON.stringify({topic: `${topic}`, message: `${message.value}`}));
+      client_sockets.forEach(client => {
+        client.send(JSON.stringify({topic: `${topic}`, message: `${message.value}`}));
+      });
     },
   })
 }catch(error) {
@@ -90,7 +96,13 @@ wss.on('connection', (ws) => {
 );
 
 wss.on("close", (ws) => {
-  ws.close();
+  for(var i = 0; i < client_sockets.length; i++){ 
+    
+    if ( client_sockets[i] === ws) { 
+
+        client_sockets.splice(i, 1); 
+    }
+}
 });
 
 
